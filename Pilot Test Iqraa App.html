@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕌 Kelas Mengaji Kerinchi</title>
+    <style>
+        * { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: linear-gradient(135deg, #ecfdf5 0%, #dbeafe 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem; }
+        .btn { padding: 12px 24px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s; font-size: 16px; margin: 4px; }
+        .btn-primary { background: #16a34a; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-attendance { background: #06b6d4; color: white; }
+        .btn-iqra { background: #f59e0b; color: white; }
+        .btn-quran { background: #7c3aed; color: white; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: white; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 16px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f8fafc; font-weight: 600; color: #374151; }
+        input, select, textarea { width: 100%; padding: 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 16px; margin-bottom: 1rem; }
+        .nav { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 2rem; padding: 20px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); align-items: center; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .hidden { display: none !important; }
+        .error { background: #fef2f2; color: #dc2626; padding: 16px; border-radius: 12px; border: 1px solid #fecaca; margin: 16px 0; }
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .hadir { background: #d1fae5; color: #065f46; }
+        .tidak-hadir { background: #fee2e2; color: #991b1b; }
+        .action-card { text-align: center; padding: 2rem; border: 3px dashed #e5e7eb; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        .action-card:hover { border-color: #16a34a; transform: translateY(-5px); }
+        .stat-card { background: #f8fafc; padding: 1.5rem; border-radius: 15px; border-left: 5px solid #16a34a; text-align: center; }
+        .form-grid { display: grid; gap: 1.5rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .text-center { text-align: center; }
+        .flex { display: flex; }
+        .flex-wrap { flex-wrap: wrap; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-4 { gap: 1rem; }
+        .mb-4, .mb-6, .mb-8 { margin-bottom: 1rem, 1.5rem, 2rem; }
+        .mt-8, .mt-12 { margin-top: 2rem, 3rem; }
+        .p-6, .p-8 { padding: 1.5rem, 2rem; }
+        .text-xl { font-size: 1.25rem; }
+        .text-2xl { font-size: 1.5rem; }
+        .text-3xl { font-size: 2rem; }
+        .font-bold { font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div id="loginPage" class="container" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+        <div class="card" style="width: 100%; max-width: 450px;">
+            <div class="text-center" style="margin-bottom: 2rem;">
+                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Kelas Mengaji Kerinchi</h1>
+                <p style="color: #666;">Log masuk untuk mengurus rekod</p>
+            </div>
+            <form id="loginForm">
+                <label>Nama Pengguna</label>
+                <input type="text" id="username" placeholder="Username" required>
+                <label>Kata Laluan</label>
+                <input type="password" id="password" placeholder="Masukkan kata laluan" required>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.2rem;">🚀 Log Masuk</button>
+            </form>
+            <div id="errorMsg" class="error hidden"></div>
+        </div>
+    </div>
+
+    <div id="app" class="hidden">
+        <div class="container">
+            <div class="nav" id="navbar"></div>
+            <div id="mainContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let currentPelajar = null;
+
+        // === DATABASE LOGIC ===
+        const DB = {
+            init() {
+                if (!localStorage.getItem('iqra_data_v3')) {
+                    localStorage.setItem('iqra_data_v3', JSON.stringify({
+                        users: [
+                            { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
+                            { id: 2, username: 'guru1', password: 'guru123', role: 'guru', expires_at: '2026-03-01' }
+                        ],
+                        pelajar: [
+                            { id: 1, nama: 'Ahmad Ali', umur: 8, jantina: 'Lelaki', nama_penjaga: 'Ali Hassan', nombor_telefon: '012-3456789', created_at: '2026-01-01' },
+                            { id: 2, nama: 'Siti Nurhaliza', umur: 9, jantina: 'Perempuan', nama_penjaga: 'Fatimah Osman', nombor_telefon: '019-8765432', created_at: '2026-01-01' },
+                            { id: 3, nama: 'Muhammad Faris', umur: 7, jantina: 'Lelaki', nama_penjaga: 'Rahim Ali', nombor_telefon: '011-1122334', created_at: '2026-01-15' }
+                        ],
+                        kehadiran: [
+                            { id: 1, pelajar_id: 1, tarikh: '2026-02-01', status: 'Hadir', komen: '', created_by: 'guru1' }
+                        ],
+                        iqra: [
+                            { id: 1, pelajar_id: 1, nombor_iqra: 1, muka_surat: 10, tahap: 'Baik', skor: 8, komen: 'Bagus bacaan', tarikh: '2026-02-01', created_by: 'guru1' }
+                        ],
+                        quran: [
+                            { id: 1, pelajar_id: 1, juz: 1, muka_surat_awal: 1, muka_surat_akhir: 20, hafazan: 'Baris 1-5', tahap: 'Hafal', skor: 9, komen: 'Hafazan baik', tarikh: '2026-02-01', created_by: 'guru1' }
+                        ]
+                    }));
+                }
+            },
+            get() { 
+                return JSON.parse(localStorage.getItem('iqra_data_v3') || '{}'); 
+            },
+            save(data) { 
+                localStorage.setItem('iqra_data_v3', JSON.stringify(data)); 
+            }
+        };
+
+        // === INITIALIZATION ===
+        document.addEventListener('DOMContentLoaded', () => {
+            DB.init();
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            const savedUser = localStorage.getItem('current_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showApp();
+            }
+        });
+
+        // === AUTHENTICATION ===
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const data = DB.get();
+            
+            const user = data.users?.find(u => u.username === username && u.password === password);
+            
+            if (!user) {
+                showError('❌ Nama pengguna atau kata laluan salah!');
+                return;
+            }
+
+            if (user.role === 'guru' && user.expires_at && new Date() > new Date(user.expires_at)) {
+                showError('⏰ Akses guru telah TAMAT TEMPOH!');
+                return;
+            }
+
+            currentUser = user;
+            localStorage.setItem('current_user', JSON.stringify(user));
+            showApp();
+        }
+
+        function showApp() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            renderNav();
+            if (currentUser.role === 'admin') {
+                showAdminDashboard();
+            } else {
+                showPelajarList();
+            }
+        }
+
+        // === NAVIGATION ===
+        function renderNav() {
+            const isAdmin = currentUser.role === 'admin';
+            document.getElementById('navbar').innerHTML = `
+                <div style="flex: 1;">
+                    <strong>👤 ${currentUser.username.toUpperCase()}</strong> 
+                    <span style="background: ${isAdmin ? '#16a34a' : '#06b6d4'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                        ${isAdmin ? 'ADMIN' : 'GURU'}
+                    </span>
+                </div>
+                <button class="btn btn-secondary" onclick="logout()">🚪 Keluar</button>
+                ${isAdmin ? '<button class="btn btn-primary" onclick="showAdminDashboard()">📊 Dashboard</button>' : ''}
+                <button class="btn btn-primary" onclick="showPelajarList()">👥 Pelajar</button>
+                ${isAdmin ? '<button class="btn btn-secondary" onclick="showPengurusanGuru()">👩‍🏫 Guru</button>' : ''}
+            `;
+        }
+
+        function logout() {
+            localStorage.removeItem('current_user');
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('mainContent').innerHTML = '';
+        }
+
+        // === ADMIN FUNCTIONS ===
+        function showAdminDashboard() {
+            const data = DB.get();
+            document.getElementById('mainContent').innerHTML = `
+                <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem;">Ringkasan Sistem</h2>
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <h3 style="font-size: 2rem; margin: 0 0 0.5rem 0;">${data.pelajar?.length || 0}</h3>
+                        <p>Jumlah Pelajar</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 style="font-size: 2rem; margin: 0 0 0.5rem 0;">${data.users?.filter(u => u.role === 'guru').length || 0}</h3>
+                        <p>Jumlah Guru</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 style="font-size: 2rem; margin: 0 0 0.5rem 0;">${data.kehadiran?.length || 0}</h3>
+                        <p>Rekod Kehadiran</p>
+                    </div>
+                </div>
+                <div class="card" style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Aktiviti Terkini</h3>
+                    <p>Sistem beroperasi dengan baik. Gunakan menu di atas untuk navigasi.</p>
+                </div>
+            `;
+        }
+
+// === GURU FUNCTIONS ===
+        function showPengurusanGuru() {
+            const data = DB.get();
+            const gurus = data.users?.filter(u => u.role === 'guru') || [];
+            document.getElementById('mainContent').innerHTML = `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h2 style="font-size: 1.5rem; font-weight: 700;">Pengurusan Guru (${gurus.length})</h2>
+                        <button class="btn btn-primary" onclick="showTambahGuruForm()">➕ Tambah Guru</button>
+                    </div>
+                    
+                    <div class="guru-grid">
+                        ${gurus.map(guru => `
+                            <div class="card p-6" style="border-left: 5px solid ${!guru.expires_at ? '#10b981' : new Date() > new Date(guru.expires_at) ? '#dc2626' : '#f59e0b'};">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h4 style="font-size: 1.25rem; margin: 0;">👩‍🏫 ${guru.username}</h4>
+                                    <div style="text-align: right;">
+                                        ${!guru.expires_at ? 
+                                            '<span class="status-badge" style="background: #d1fae5; color: #065f46;">PENUH</span>' :
+                                            new Date() > new Date(guru.expires_at) ?
+                                                '<span class="status-badge expired">TAMAT</span>' :
+                                                '<span class="status-badge expires-soon">AKTIF</span>'
+                                        }
+                                    </div>
+                                </div>
+                                <div style="font-size: 14px; color: #6b7280;">
+                                    <p><strong>ID:</strong> ${guru.id}</p>
+                                    <p><strong>Password:</strong> ${guru.password}</p>
+                                    ${guru.expires_at ? `<p><strong>Tamat:</strong> ${guru.expires_at}</p>` : ''}
+                                </div>
+                                <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-primary" style="flex: 1; padding: 8px 16px; font-size: 14px;" onclick="showEditGuruForm(${guru.id})">✏️ Edit</button>
+                                    <button class="btn btn-danger" style="flex: 1; padding: 8px 16px; font-size: 14px;" onclick="hapusGuru(${guru.id}, '${guru.username}')">🗑️ Padam</button>
+                                </div>
+                            </div>
+                        `).join('') || '<div class="card p-6 text-center" style="color: #6b7280;"><p>Tiada guru. <button class="btn btn-primary" onclick="showTambahGuruForm()" style="margin-top: 1rem;">Tambah guru pertama</button></p></div>'}
+                    </div>
+                </div>
+            `;
+        }
+
+        function showTambahGuruForm() {
+            document.getElementById('mainContent').innerHTML = `
+                <div class="card" style="max-width: 500px; margin: 0 auto;">
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem;">Tambah Guru Baru</h2>
+                    <form id="guruForm" class="form-grid">
+                        <label>Username (unik) *</label>
+                        <input type="text" name="username" required placeholder="contoh: guru2">
+                        <label>Password *</label>
+                        <input type="password" name="password" required placeholder="guru234">
+                        <label>Tamat Tempoh (YYYY-MM-DD)</label>
+                        <input type="date" name="expires_at">
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="submit" class="btn btn-success" style="flex: 1;">💾 Simpan Guru</button>
+                            <button type="button" class="btn btn-secondary" onclick="showPengurusanGuru()" style="flex: 1;">❌ Batal</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.getElementById('guruForm').addEventListener('submit', handleSimpanGuru);
+        }
+		
+		function showEditGuruForm(guruId) {
+            const data = DB.get();
+            const guru = data.users.find(u => u.id === guruId && u.role === 'guru');
+            if (!guru) return showPengurusanGuru();
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="card" style="max-width: 500px; margin: 0 auto;">
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem;">Edit Guru: ${guru.username}</h2>
+                    <form id="guruForm" class="form-grid">
+                        <input type="hidden" name="id" value="${guru.id}">
+                        <input type="hidden" name="role" value="guru">
+                        <label>Username *</label>
+                        <input type="text" name="username" value="${guru.username}" required>
+                        <label>Password Baru (kosongkan jika tidak ubah)</label>
+                        <input type="password" name="password" placeholder="Biarkan kosong untuk kekalkan">
+                        <label>Tamat Tempoh (YYYY-MM-DD)</label>
+                        <input type="date" name="expires_at" value="${guru.expires_at || ''}">
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="submit" class="btn btn-primary" style="flex: 1;">💾 Kemaskini</button>
+                            <button type="button" class="btn btn-secondary" onclick="showPengurusanGuru()" style="flex: 1;">❌ Batal</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.getElementById('guruForm').addEventListener('submit', handleSimpanGuru);
+        }
+		
+       	   // === STUDENT FUNCTIONS ===
+        function showPelajarList() {
+            const data = DB.get();
+            const pelajarList = data.pelajar || [];
+            const isAdmin = currentUser.role === 'admin';
+            document.getElementById('mainContent').innerHTML = `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="font-size: 1.5rem; font-weight: 700;">Senarai Pelajar (${pelajarList.length} orang)</h2>
+                        ${isAdmin ? '<button class="btn btn-primary" onclick="showPelajarForm()">➕ Tambah Pelajar</button>' : ''}
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead><tr><th>Nama</th><th>Umur</th><th>Jantina</th><th>Penjaga</th><th>Telefon</th><th>Tindakan</th></tr></thead>
+                            <tbody>
+                                ${pelajarList.map(p => `
+                                    <tr>
+                                        <td><strong>${p.nama}</strong></td>
+                                        <td>${p.umur}</td>
+                                        <td>${p.jantina}</td>
+                                        <td>${p.nama_penjaga}</td>
+                                        <td>${p.nombor_telefon}</td>
+                                        <td><button class="btn btn-primary" onclick="showPelajarDetail(${p.id})">📋 Lihat</button></td>
+                                    </tr>
+                                `).join('') || '<tr><td colspan="6" style="text-align: center; padding: 2rem;">Tiada pelajar</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        function showPelajarForm(mode = 'add', pelajarId = null) {
+            const isEdit = mode === 'edit';
+            const pelajar = isEdit ? (DB.get().pelajar || []).find(p => p.id === pelajarId) : null;
+            document.getElementById('mainContent').innerHTML = `
+                <div class="card" style="max-width: 600px; margin: 0 auto;">
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">${isEdit ? 'Edit' : 'Tambah'} Pelajar Baru</h2>
+                    <form id="pelajarForm">
+                        <input type="hidden" name="id" value="${pelajar?.id || ''}">
+                        <label>Nama Penuh</label>
+                        <input type="text" name="nama" value="${pelajar?.nama || ''}" required>
+                        <label>Umur</label>
+                        <input type="number" name="umur" value="${pelajar?.umur || ''}" min="1" required>
+                        <label>Jantina</label>
+                        <select name="jantina" required>
+                            <option value="">Pilih jantina</option>
+                            <option value="Lelaki" ${pelajar?.jantina === 'Lelaki' ? 'selected' : ''}>Lelaki</option>
+                            <option value="Perempuan" ${pelajar?.jantina === 'Perempuan' ? 'selected' : ''}>Perempuan</option>
+                        </select>
+                        <label>Nama Penjaga</label>
+                        <input type="text" name="nama_penjaga" value="${pelajar?.nama_penjaga || ''}" required>
+                        <label>Nombor Telefon</label>
+                        <input type="text" name="nombor_telefon" value="${pelajar?.nombor_telefon || ''}" required>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="submit" class="btn btn-primary" style="flex: 1;">💾 ${isEdit ? 'Kemaskini' : 'Simpan'}</button>
+                            <button type="button" class="btn btn-secondary" onclick="showPelajarList()" style="flex: 1;">❌ Batal</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.getElementById('pelajarForm').addEventListener('submit', (e) => handleSimpanPelajar(e, isEdit));
+        }
+
+        // === RECORD FORMS ===
+        function showRecordForm(type, pelajarId) {
+            currentPelajar = (DB.get().pelajar || []).find(p => p.id === pelajarId);
+            const today = new Date().toISOString().split('T')[0];
+            
+            const formConfigs = {
+                kehadiran: {
+                    title: `📅 Kehadiran - ${currentPelajar.nama}`,
+                    fields: [
+                        { label: 'Status Kehadiran *', name: 'status', type: 'select', options: [
+                            { value: 'Hadir', text: '✅ Hadir' },
+                            { value: 'Tidak Hadir', text: '❌ Tidak Hadir' }
+                        ], required: true },
+                        { label: 'Catatan', name: 'komen', type: 'textarea', rows: 3 }
+                    ],
+                    btnClass: 'btn-attendance',
+                    handler: handleSimpanKehadiran
+                },
+                iqra: {
+                    title: `📖 Iqra - ${currentPelajar.nama}`,
+                    fields: [
+                        { label: 'Nombor Iqra (1-6) *', name: 'nombor_iqra', type: 'number', min: 1, max: 6, required: true },
+                        { label: 'Muka Surat', name: 'muka_surat', type: 'number', min: 1 },
+                        { label: 'Skor (1-10) *', name: 'skor', type: 'number', min: 1, max: 10, required: true },
+                        { label: 'Tahap *', name: 'tahap', type: 'select', options: [
+                            { value: 'Lemah' }, { value: 'Baik' }, { value: 'Sederhana' },{ value: 'Cemerlang' }
+                        ], required: true },
+                        { label: 'Komen', name: 'komen', type: 'textarea', rows: 3 }
+                    ],
+                    btnClass: 'btn-iqra',
+                    handler: handleSimpanIqra
+                },
+                quran: {
+                    title: `📚 Quran - ${currentPelajar.nama}`,
+                    fields: [
+                        { label: 'Juz (1-30) *', name: 'juz', type: 'number', min: 1, max: 30, required: true },
+                        { label: 'Muka Surat Awal *', name: 'muka_surat_awal', type: 'number', min: 1, max: 604, required: true },
+                        { label: 'Muka Surat Akhir *', name: 'muka_surat_akhir', type: 'number', min: 1, max: 604, required: true },
+                        { label: 'Skor (1-10) *', name: 'skor', type: 'number', min: 1, max: 10, required: true },
+                        { label: 'Jenis Hafazan(jika ada)', name: 'hafazan', type: 'text' },
+                        { label: 'Tahap Penguasaan Bacaan*', name: 'tahap', type: 'select', options: [
+                            { value: 'Lemah' }, { value: 'Memuaskan' }, { value: 'Baik' }, { value: 'Cemerlang' }
+                        ], required: true },
+                        { label: 'Komen', name: 'komen', type: 'textarea', rows: 3 }
+                    ],
+                    btnClass: 'btn-quran',
+                    handler: handleSimpanQuran
+                }
+            };
+
+            const config = formConfigs[type];
+            let fieldsHTML = '';
+            
+            config.fields.forEach(field => {
+                if (field.type === 'select') {
+                    const options = field.options.map(opt => 
+                        `<option value="${opt.value}">${opt.text || opt.value}</option>`
+                    ).join('');
+                    fieldsHTML += `
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.75rem; font-size: 1.125rem;">${field.label}</label>
+                            <select name="${field.name}" ${field.required ? 'required' : ''} style="font-size: 1.125rem;">
+                                <option value="">Pilih ${field.label.toLowerCase()}</option>
+                                ${options}
+                            </select>
+                        </div>
+                    `;
+                } else if (field.type === 'textarea') {
+                    fieldsHTML += `
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.75rem; font-size: 1.125rem;">${field.label}</label>
+                            <textarea name="${field.name}" rows="${field.rows || 3}" style="font-size: 1.125rem;" placeholder="${field.label}..."></textarea>
+                        </div>
+                    `;
+                } else {
+                    fieldsHTML += `
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.75rem; font-size: 1.125rem;">${field.label}</label>
+                            <input type="${field.type}" name="${field.name}" ${field.min ? `min="${field.min}"` : ''} ${field.max ? `max="${field.max}"` : ''} ${field.required ? 'required' : ''} style="font-size: 1.125rem;">
+                        </div>
+                    `;
+                }
+            });
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h3 style="font-size: 2rem; font-weight: 700;">${config.title}</h3>
+                        <button class="btn btn-secondary" onclick="showPelajarDetail(${currentPelajar.id})">← Kembali</button>
+                    </div>
+                    <form id="${type}Form" class="form-grid" style="display: grid; gap: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">${fieldsHTML}</div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="submit" class="${config.btnClass}" style="font-size: 1.25rem; padding: 1rem 2rem; flex: 1;">💾 Simpan ${type.charAt(0).toUpperCase() + type.slice(1)}</button>
+                            <button type="button" class="btn btn-secondary" style="font-size: 1.25rem; padding: 1rem 2rem; flex: 1;" onclick="showPelajarDetail(${currentPelajar.id})">❌ Batal</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById(`${type}Form`).addEventListener('submit', (e) => config.handler(e, currentPelajar.id));
+        }
+
+        // === SAVE HANDLERS ===
+		
+function handleSimpanGuru(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = DB.get();
+            const isEdit = formData.get('id');
+            const username = formData.get('username').trim().toLowerCase();
+
+            // Check duplicate username
+            if (data.users.find(u => u.username === username && u.id != (isEdit ? parseInt(isEdit) : 0))) {
+                return showError('❌ Username sudah wujud!');
+            }
+
+            const guruData = {
+                id: isEdit ? parseInt(isEdit) : Date.now(),
+                username,
+                password: formData.get('password') || data.users.find(u => u.id === parseInt(isEdit))?.password,
+                role: 'guru',
+                expires_at: formData.get('expires_at') || null
+            };
+
+            if (isEdit) {
+                const index = data.users.findIndex(u => u.id === parseInt(isEdit));
+                data.users[index] = guruData;
+            } else {
+                data.users.push(guruData);
+            }
+
+            DB.save(data);
+            alert(`✅ Guru berjaya ${isEdit ? 'dikemaskini' : 'ditambah'}!`);
+            showPengurusanGuru();
+        }
+		
+        function handleSimpanPelajar(e, isEdit) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = DB.get();
+            
+            const pelajarData = {
+                id: isEdit ? parseInt(formData.get('id')) : Date.now(),
+                nama: formData.get('nama'),
+                umur: parseInt(formData.get('umur')),
+                jantina: formData.get('jantina'),
+                nama_penjaga: formData.get('nama_penjaga'),
+                nombor_telefon: formData.get('nombor_telefon'),
+                created_at: new Date().toISOString().split('T')[0]
+            };
+
+            if (isEdit) {
+                const index = data.pelajar.findIndex(p => p.id === pelajarData.id);
+                data.pelajar[index] = pelajarData;
+            } else {
+                data.pelajar.push(pelajarData);
+            }
+            
+            DB.save(data);
+            alert(`✅ Pelajar berjaya ${isEdit ? 'dikemaskini' : 'ditambah'}!`);
+            showPelajarList();
+        }
+
+        function handleSimpanKehadiran(e, id) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = DB.get();
+            const today = new Date().toISOString().split('T')[0];
+            
+            data.kehadiran.push({
+                id: Date.now(),
+                pelajar_id: id,
+                tarikh: today,
+                status: formData.get('status'),
+                komen: formData.get('komen') || '',
+                created_by: currentUser.username
+            });
+            
+            DB.save(data);
+            alert('✅ Kehadiran berjaya disimpan!');
+            showPelajarDetail(id);
+        }
+
+        function handleSimpanIqra(e, id) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = DB.get();
+            const today = new Date().toISOString().split('T')[0];
+            
+            const nomborIqra = parseInt(formData.get('nombor_iqra'));
+            const skor = parseInt(formData.get('skor'));
+            
+            if (nomborIqra < 1 || nomborIqra > 6) return alert('❌ Nombor Iqra mesti 1-6!');
+            if (skor < 1 || skor > 10) return alert('❌ Skor mesti 1-10!');
+            
+            data.iqra.push({
+                id: Date.now(),
+                pelajar_id: id,
+                nombor_iqra: nomborIqra,
+                muka_surat: parseInt(formData.get('muka_surat')) || 0,
+                tahap: formData.get('tahap'),
+                skor: skor,
+                komen: formData.get('komen') || '',
+                tarikh: today,
+                created_by: currentUser.username
+            });
+            
+            DB.save(data);
+            alert('✅ Rekod Iqra berjaya disimpan!');
+            showPelajarDetail(id);
+        }
+
+        function handleSimpanQuran(e, id) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = DB.get();
+            const today = new Date().toISOString().split('T')[0];
+            
+            const juz = parseInt(formData.get('juz'));
+            const mukaAwal = parseInt(formData.get('muka_surat_awal'));
+            const mukaAkhir = parseInt(formData.get('muka_surat_akhir'));
+            const skor = parseInt(formData.get('skor'));
+            
+            if (juz < 1 || juz > 30) return alert('❌ Juz mesti 1-30!');
+            if (mukaAwal < 1 || mukaAwal > 604 || mukaAkhir < 1 || mukaAkhir > 604) return alert('❌ Muka surat 1-604!');
+            if (mukaAwal > mukaAkhir) return alert('❌ Muka surat awal ≤ akhir!');
+            if (skor < 1 || skor > 10) return alert('❌ Skor mesti 1-10!');
+            
+            data.quran.push({
+                id: Date.now(),
+                pelajar_id: id,
+                juz: juz,
+                muka_surat_awal: mukaAwal,
+                muka_surat_akhir: mukaAkhir,
+                hafazan: formData.get('hafazan') || '',
+                tahap: formData.get('tahap'),
+                skor: skor,
+                komen: formData.get('komen') || '',
+                tarikh: today,
+                created_by: currentUser.username
+            });
+            
+            DB.save(data);
+            alert('✅ Rekod Quran berjaya disimpan!');
+            showPelajarDetail(id);
+        }
+
+        // === STUDENT DETAIL ===
+        function showPelajarDetail(id) {
+            const data = DB.get();
+            currentPelajar = (data.pelajar || []).find(p => p.id === id);
+            if (!currentPelajar) return showPelajarList();
+            
+            const kehadiran = (data.kehadiran || []).filter(k => k.pelajar_id === id);
+            const iqra = (data.iqra || []).filter(i => i.pelajar_id === id);
+            const quran = (data.quran || []).filter(q => q.pelajar_id === id);
+            const isAdmin = currentUser.role === 'admin';
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="card">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+                        <h2 style="font-size: 2rem; font-weight: 700;">${currentPelajar.nama}</h2>
+                        <div style="text-align: right;">
+                            <p>Umur: <strong>${currentPelajar.umur}</strong> tahun</p>
+                            <p>Penjaga: <strong>${currentPelajar.nama_penjaga}</strong></p>
+                            <p>📞 ${currentPelajar.nombor_telefon}</p>
+                            ${isAdmin ? `<button class="btn btn-primary" onclick="showPelajarForm('edit', ${id})" style="margin-top: 0.5rem;">✏️ Edit Pelajar</button>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div style="grid-column: span 1;">
+                            <h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center;">📅 Kehadiran</h3>
+                            <table>
+                                <thead><tr><th>Tarikh</th><th>Status</th><th>Dicatat Oleh</th></tr></thead>
+                                <tbody>
+                                    ${kehadiran.map(k => `<tr><td>${k.tarikh}</td><td><span class="status-badge ${k.status === 'Hadir' ? 'hadir' : 'tidak-hadir'}">${k.status}</span></td><td>${k.created_by}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align: center; padding: 2rem; color: #6b7280;">Tiada rekod</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="grid-column: span 3;">
+                            <h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center;">📖 Iqra</h3>
+                            <table>
+                                <thead><tr><th>Tarikh</th><th>Iqra</th><th>Skor</th><th>Tahap</th><th>Komen</th></tr></thead>
+                                <tbody>
+                                    ${iqra.map(i => `<tr><td>${i.tarikh}</td><td>Iqra ${i.nombor_iqra}</td><td><strong>${i.skor}/10</strong></td><td><span class="status-badge" style="background: #fef3c7; color: #92400e;">${i.tahap}</span></td><td><strong>${i.komen}</strong></td></tr>`).join('') || '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: #6b7280;">Tiada rekod</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="grid-column: span 5;">
+                            <h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center;">📚 Quran</h3>
+                            <table>
+                                <thead><tr><th>Tarikh</th><th>Juz</th><th>M/s</th><th>Skor</th><th>Komen</th></tr></thead>
+                                <tbody>
+                                    ${quran.map(q => `<tr><td>${q.tarikh}</td><td><strong>Juz ${q.juz}</strong></td><td>${q.muka_surat_awal}-${q.muka_surat_akhir}</td><td><strong>${q.skor}/10</strong></td><td><strong>${q.komen}</strong></td></tr>`).join('') || '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: #6b7280;">Tiada rekod</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    ${currentUser.role !== 'admin' ? `
+                        <div class="action-grid">
+                            <div class="action-card" onclick="showRecordForm('kehadiran', ${id})">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
+                                <h4 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Kehadiran</h4>
+                                <p style="color: #6b7280; margin: 0;">Tambah rekod kehadiran</p>
+                            </div>
+                            <div class="action-card" onclick="showRecordForm('iqra', ${id})">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📖</div>
+                                <h4 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Iqra</h4>
+                                <p style="color: #6b7280; margin: 0;">Tambah rekod Iqra</p>
+                            </div>
+                            <div class="action-card" onclick="showRecordForm('quran', ${id})">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📚</div>
+                                <h4 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Quran</h4>
+                                <p style="color: #6b7280; margin: 0;">Tambah rekod Quran</p>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${isAdmin ? `
+                        <div style="margin-top: 3rem; padding: 2rem; background: #fef2f2; border: 2px dashed #fecaca; border-radius: 20px; text-align: center;">
+                            <h3 style="font-size: 1.25rem; font-weight: 700; color: #dc2626; margin-bottom: 1rem;">⚠️ Admin - Padam Pelajar</h3>
+                            <button class="btn btn-danger" style="font-size: 1.125rem; padding: 1rem 2rem;" onclick="confirmDeletePelajar(${id})">
+                                🗑️ Padam Pelajar Ini
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function confirmDeletePelajar(id) {
+            if (confirm(`⚠️ Padam semua rekod ${currentPelajar.nama}? Ini tidak boleh dibalikkan!`)) {
+                const data = DB.get();
+                data.pelajar = (data.pelajar || []).filter(p => p.id !== id);
+                data.kehadiran = (data.kehadiran || []).filter(k => k.pelajar_id !== id);
+                data.iqra = (data.iqra || []).filter(i => i.pelajar_id !== id);
+                data.quran = (data.quran || []).filter(q => q.pelajar_id !== id);
+                DB.save(data);
+                alert('✅ Pelajar berjaya dipadam!');
+                showPelajarList();
+            }
+        }
+
+function hapusGuru(id, username) {
+            if (confirm(`⚠️ Padam guru ${username}?`)) {
+                const data = DB.get();
+                data.users = data.users.filter(u => u.id !== id);
+                DB.save(data);
+                alert('✅ Guru berjaya dipadam!');
+                showPengurusanGuru();
+            }
+        }
+
+function showError(msg) {
+    const errorDiv = document.getElementById('errorMsg');
+    if (errorDiv) {
+        errorDiv.textContent = msg;
+        errorDiv.classList.remove('hidden');
+        setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+    } else {
+        alert(msg);
+    }
+}    </script>
+</body>
+</html>
